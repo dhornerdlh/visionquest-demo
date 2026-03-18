@@ -10,6 +10,7 @@ export default function Header() {
   const links = [
     { href: "/", label: "Dashboard" },
     { href: "/courses", label: "Courses" },
+    { href: "/courses/create", label: "Create" },
   ];
 
   return (

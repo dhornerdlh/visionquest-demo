@@ -1,9 +1,10 @@
 export interface Lesson {
   id: string;
   title: string;
-  type: "video" | "text" | "quiz";
+  type: "video" | "text" | "quiz" | "link";
   duration: string;
   content: string;
+  url?: string;
 }
 
 export interface Module {
@@ -22,6 +23,8 @@ export interface Course {
   lessons: number;
   level: "Beginner" | "Intermediate" | "Advanced";
   modules: Module[];
+  isCustom?: boolean;
+  createdAt?: string;
 }
 
 export const courses: Course[] = [

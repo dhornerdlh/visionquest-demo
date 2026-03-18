@@ -3,11 +3,19 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
-import { courses } from "@/lib/data";
+import type { Course } from "@/lib/data";
+import { getCourseById } from "@/lib/courseStorage";
 
-export default function CourseViewer() {
+function getYouTubeId(url: string): string | null {
+  const match = url.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?#]+)/
+  );
+  return match ? match[1] : null;
+}
+
+export default function CourseViewer({ course: courseProp }: { course?: Course }) {
   const params = useParams();
-  const course = courses.find((c) => c.id === params.id);
+  const course = courseProp ?? getCourseById(params.id as string);
   const [activeLesson, setActiveLesson] = useState<string | null>(null);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(
     new Set()
@@ -32,9 +40,9 @@ export default function CourseViewer() {
 
   const allLessons = course.modules.flatMap((m) => m.lessons);
   const currentLesson = allLessons.find((l) => l.id === activeLesson);
-  const progress = Math.round(
-    (completedLessons.size / allLessons.length) * 100
-  );
+  const progress = allLessons.length
+    ? Math.round((completedLessons.size / allLessons.length) * 100)
+    : 0;
 
   const toggleComplete = (lessonId: string) => {
     setCompletedLessons((prev) => {
@@ -51,6 +59,8 @@ export default function CourseViewer() {
         return "▶";
       case "quiz":
         return "?";
+      case "link":
+        return "↗";
       default:
         return "≡";
     }
@@ -62,8 +72,23 @@ export default function CourseViewer() {
         return "bg-blue-100 text-blue-600";
       case "quiz":
         return "bg-amber-100 text-amber-600";
+      case "link":
+        return "bg-purple-100 text-purple-600";
       default:
         return "bg-gray-100 text-gray-600";
+    }
+  };
+
+  const typeLabel = (type: string) => {
+    switch (type) {
+      case "video":
+        return "Video Lesson";
+      case "quiz":
+        return "Knowledge Check";
+      case "link":
+        return "External Training";
+      default:
+        return "Reading";
     }
   };
 
@@ -84,9 +109,16 @@ export default function CourseViewer() {
         <div className="bg-gradient-to-r from-teal-700 to-teal-600 rounded-2xl p-8 text-white mb-8">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <span className="inline-block px-3 py-1 text-xs font-medium bg-white/20 rounded-full mb-3">
-                {course.category}
-              </span>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="inline-block px-3 py-1 text-xs font-medium bg-white/20 rounded-full">
+                  {course.category}
+                </span>
+                {course.isCustom && (
+                  <span className="inline-block px-3 py-1 text-xs font-medium bg-white/30 rounded-full">
+                    Custom
+                  </span>
+                )}
+              </div>
               <h1 className="text-3xl font-bold mb-3">{course.title}</h1>
               <p className="text-teal-100 max-w-2xl">{course.description}</p>
               <div className="flex items-center gap-6 mt-4 text-sm text-teal-200">
@@ -193,30 +225,41 @@ export default function CourseViewer() {
                       {currentLesson.title}
                     </h2>
                     <p className="text-sm text-gray-400">
-                      {currentLesson.type === "video"
-                        ? "Video Lesson"
-                        : currentLesson.type === "quiz"
-                        ? "Knowledge Check"
-                        : "Reading"}{" "}
-                      · {currentLesson.duration}
+                      {typeLabel(currentLesson.type)} · {currentLesson.duration}
                     </p>
                   </div>
                 </div>
 
+                {/* Video with optional YouTube embed */}
                 {currentLesson.type === "video" && (
-                  <div className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center mb-6">
-                    <div className="text-center text-white/60">
-                      <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-3">
-                        <span className="text-2xl">▶</span>
+                  <div className="mb-6">
+                    {currentLesson.url && getYouTubeId(currentLesson.url) ? (
+                      <div className="aspect-video rounded-lg overflow-hidden">
+                        <iframe
+                          src={`https://www.youtube.com/embed/${getYouTubeId(currentLesson.url)}`}
+                          className="w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          title={currentLesson.title}
+                        />
                       </div>
-                      <p className="text-sm">Video Player</p>
-                      <p className="text-xs text-white/40 mt-1">
-                        {currentLesson.duration}
-                      </p>
-                    </div>
+                    ) : (
+                      <div className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center">
+                        <div className="text-center text-white/60">
+                          <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-3">
+                            <span className="text-2xl">▶</span>
+                          </div>
+                          <p className="text-sm">Video Player</p>
+                          <p className="text-xs text-white/40 mt-1">
+                            {currentLesson.duration}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
+                {/* Quiz */}
                 {currentLesson.type === "quiz" && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-6">
                     <div className="flex items-center gap-3 mb-3">
@@ -238,11 +281,41 @@ export default function CourseViewer() {
                   </div>
                 )}
 
-                <div className="prose prose-gray max-w-none">
-                  <p className="text-gray-600 leading-relaxed">
-                    {currentLesson.content}
-                  </p>
-                </div>
+                {/* External Link */}
+                {currentLesson.type === "link" && currentLesson.url && (
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 mb-6">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-lg font-bold">
+                        ↗
+                      </span>
+                      <div>
+                        <h3 className="font-semibold text-purple-800">
+                          External Training
+                        </h3>
+                        <p className="text-sm text-purple-600 truncate max-w-md">
+                          {currentLesson.url}
+                        </p>
+                      </div>
+                    </div>
+                    <a
+                      href={currentLesson.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors mt-2"
+                    >
+                      Open External Training ↗
+                    </a>
+                  </div>
+                )}
+
+                {/* Content text */}
+                {currentLesson.content && (
+                  <div className="prose prose-gray max-w-none">
+                    <p className="text-gray-600 leading-relaxed">
+                      {currentLesson.content}
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
                   <button

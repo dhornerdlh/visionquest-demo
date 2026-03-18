@@ -1,17 +1,30 @@
 "use client";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
-import { courses } from "@/lib/data";
+import { courses as hardcodedCourses } from "@/lib/data";
+import { getAllCourses } from "@/lib/courseStorage";
+import type { Course } from "@/lib/data";
 
 export default function Dashboard() {
-  const totalLessons = courses.reduce((sum, c) => sum + c.lessons, 0);
+  const [allCourses, setAllCourses] = useState<Course[]>(hardcodedCourses);
+
+  useEffect(() => {
+    setAllCourses(getAllCourses());
+  }, []);
+
+  const totalLessons = allCourses.reduce((sum, c) => sum + c.lessons, 0);
+  const categoryCount = new Set(allCourses.map((c) => c.category)).size;
 
   const stats = [
-    { label: "Available Courses", value: courses.length, icon: "📚" },
+    { label: "Available Courses", value: allCourses.length, icon: "📚" },
     { label: "Total Lessons", value: totalLessons, icon: "📖" },
-    { label: "Categories", value: 3, icon: "🏷️" },
+    { label: "Categories", value: categoryCount, icon: "🏷️" },
     { label: "Avg Duration", value: "48 min", icon: "⏱️" },
   ];
+
+  const getCourseHref = (course: Course) =>
+    course.isCustom ? `/courses/view?id=${course.id}` : `/courses/${course.id}`;
 
   return (
     <div className="min-h-screen">
@@ -52,19 +65,26 @@ export default function Dashboard() {
           </Link>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.slice(0, 3).map((course) => (
+          {allCourses.slice(0, 3).map((course) => (
             <Link
               key={course.id}
-              href={`/courses/${course.id}`}
+              href={getCourseHref(course)}
               className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-teal-300 transition-all overflow-hidden"
             >
               <div className="h-36 bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center">
                 <span className="text-5xl">{course.thumbnail}</span>
               </div>
               <div className="p-5">
-                <span className="inline-block px-2 py-0.5 text-xs font-medium bg-teal-50 text-teal-700 rounded-full mb-2">
-                  {course.category}
-                </span>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-block px-2 py-0.5 text-xs font-medium bg-teal-50 text-teal-700 rounded-full">
+                    {course.category}
+                  </span>
+                  {course.isCustom && (
+                    <span className="inline-block px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
+                      Custom
+                    </span>
+                  )}
+                </div>
                 <h3 className="font-semibold text-gray-900 group-hover:text-teal-700 transition-colors">
                   {course.title}
                 </h3>
