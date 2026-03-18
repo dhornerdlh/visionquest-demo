@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
-import type { Course, Module, Lesson } from "@/lib/data";
+import type { Course, Module, Lesson, QuizQuestion } from "@/lib/data";
 import { saveCustomCourse, generateCourseId } from "@/lib/courseStorage";
 
 const CATEGORIES = [
@@ -39,6 +39,21 @@ const EMOJIS = [
 ];
 
 type LessonType = "text" | "video" | "quiz" | "link";
+type QuestionType = "multiple-choice" | "true-false" | "multi-select";
+
+interface OptionDraft {
+  id: string;
+  text: string;
+}
+
+interface QuestionDraft {
+  id: string;
+  text: string;
+  type: QuestionType;
+  options: OptionDraft[];
+  correctIds: string[];
+  explanation: string;
+}
 
 interface LessonDraft {
   title: string;
@@ -46,6 +61,8 @@ interface LessonDraft {
   duration: string;
   content: string;
   url: string;
+  questions: QuestionDraft[];
+  passingScore: number;
 }
 
 interface ModuleDraft {
@@ -53,12 +70,302 @@ interface ModuleDraft {
   lessons: LessonDraft[];
 }
 
+let optCounter = 0;
+function nextOptId() {
+  return `opt-${++optCounter}`;
+}
+
+function newQuestion(): QuestionDraft {
+  const a = nextOptId();
+  const b = nextOptId();
+  const c = nextOptId();
+  const d = nextOptId();
+  return {
+    id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+    text: "",
+    type: "multiple-choice",
+    options: [
+      { id: a, text: "" },
+      { id: b, text: "" },
+      { id: c, text: "" },
+      { id: d, text: "" },
+    ],
+    correctIds: [],
+    explanation: "",
+  };
+}
+
+function newTrueFalse(): QuestionDraft {
+  return {
+    id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+    text: "",
+    type: "true-false",
+    options: [
+      { id: "t", text: "True" },
+      { id: "f", text: "False" },
+    ],
+    correctIds: [],
+    explanation: "",
+  };
+}
+
 function newLesson(): LessonDraft {
-  return { title: "", type: "text", duration: "5 min", content: "", url: "" };
+  return { title: "", type: "text", duration: "5 min", content: "", url: "", questions: [], passingScore: 70 };
 }
 
 function newModule(): ModuleDraft {
   return { title: "", lessons: [newLesson()] };
+}
+
+function QuizBuilder({
+  lesson,
+  onChange,
+}: {
+  lesson: LessonDraft;
+  onChange: (l: LessonDraft) => void;
+}) {
+  const addQuestion = (type: QuestionType) => {
+    const q = type === "true-false" ? newTrueFalse() : { ...newQuestion(), type };
+    onChange({ ...lesson, questions: [...lesson.questions, q] });
+  };
+
+  const updateQuestion = (idx: number, field: string, value: unknown) => {
+    onChange({
+      ...lesson,
+      questions: lesson.questions.map((q, i) =>
+        i === idx ? { ...q, [field]: value } : q
+      ),
+    });
+  };
+
+  const removeQuestion = (idx: number) => {
+    onChange({
+      ...lesson,
+      questions: lesson.questions.filter((_, i) => i !== idx),
+    });
+  };
+
+  const updateOption = (qIdx: number, oIdx: number, text: string) => {
+    const q = lesson.questions[qIdx];
+    const newOptions = q.options.map((o, i) => (i === oIdx ? { ...o, text } : o));
+    updateQuestion(qIdx, "options", newOptions);
+  };
+
+  const addOption = (qIdx: number) => {
+    const q = lesson.questions[qIdx];
+    updateQuestion(qIdx, "options", [
+      ...q.options,
+      { id: nextOptId(), text: "" },
+    ]);
+  };
+
+  const removeOption = (qIdx: number, oIdx: number) => {
+    const q = lesson.questions[qIdx];
+    const removed = q.options[oIdx];
+    updateQuestion(qIdx, "options", q.options.filter((_, i) => i !== oIdx));
+    if (q.correctIds.includes(removed.id)) {
+      updateQuestion(
+        qIdx,
+        "correctIds",
+        q.correctIds.filter((id) => id !== removed.id)
+      );
+    }
+  };
+
+  const toggleCorrect = (qIdx: number, optId: string) => {
+    const q = lesson.questions[qIdx];
+    const isMulti = q.type === "multi-select";
+    let newCorrect: string[];
+    if (isMulti) {
+      newCorrect = q.correctIds.includes(optId)
+        ? q.correctIds.filter((id) => id !== optId)
+        : [...q.correctIds, optId];
+    } else {
+      newCorrect = [optId];
+    }
+    updateQuestion(qIdx, "correctIds", newCorrect);
+  };
+
+  const changeQuestionType = (qIdx: number, newType: QuestionType) => {
+    const q = lesson.questions[qIdx];
+    if (newType === "true-false") {
+      updateQuestion(qIdx, "type", newType);
+      updateQuestion(qIdx, "options", [
+        { id: "t", text: "True" },
+        { id: "f", text: "False" },
+      ]);
+      updateQuestion(qIdx, "correctIds", []);
+    } else {
+      if (q.type === "true-false") {
+        // switching from T/F to MC/MS — reset options
+        const a = nextOptId(), b = nextOptId(), c = nextOptId(), d = nextOptId();
+        updateQuestion(qIdx, "options", [
+          { id: a, text: "" },
+          { id: b, text: "" },
+          { id: c, text: "" },
+          { id: d, text: "" },
+        ]);
+        updateQuestion(qIdx, "correctIds", []);
+      }
+      updateQuestion(qIdx, "type", newType);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <textarea
+        value={lesson.content}
+        onChange={(e) => onChange({ ...lesson, content: e.target.value })}
+        placeholder="Quiz description (shown before the quiz starts)..."
+        rows={2}
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
+      />
+      <div className="flex items-center gap-3">
+        <label className="text-xs text-gray-500 font-medium">
+          Passing Score:
+        </label>
+        <input
+          type="number"
+          min={0}
+          max={100}
+          value={lesson.passingScore}
+          onChange={(e) =>
+            onChange({ ...lesson, passingScore: Number(e.target.value) })
+          }
+          className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+        />
+        <span className="text-xs text-gray-400">%</span>
+      </div>
+
+      {lesson.questions.map((q, qIdx) => (
+        <div
+          key={q.id}
+          className="border border-amber-200 bg-amber-50/50 rounded-lg p-4 space-y-3"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-amber-600">
+              Q{qIdx + 1}
+            </span>
+            <select
+              value={q.type}
+              onChange={(e) =>
+                changeQuestionType(qIdx, e.target.value as QuestionType)
+              }
+              className="px-2 py-1 border border-gray-300 rounded text-xs bg-white"
+            >
+              <option value="multiple-choice">Multiple Choice</option>
+              <option value="true-false">True / False</option>
+              <option value="multi-select">Multi-Select</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => removeQuestion(qIdx)}
+              className="ml-auto text-xs text-red-500 hover:text-red-700"
+            >
+              Remove
+            </button>
+          </div>
+          <input
+            type="text"
+            value={q.text}
+            onChange={(e) => updateQuestion(qIdx, "text", e.target.value)}
+            placeholder="Enter your question..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          />
+          <div className="space-y-2">
+            <label className="text-xs text-gray-500">
+              Options{" "}
+              <span className="text-gray-400">
+                ({q.type === "multi-select"
+                  ? "check all correct"
+                  : "select the correct answer"})
+              </span>
+            </label>
+            {q.options.map((opt, oIdx) => (
+              <div key={opt.id} className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => toggleCorrect(qIdx, opt.id)}
+                  className={`w-5 h-5 rounded-${
+                    q.type === "multi-select" ? "sm" : "full"
+                  } border-2 flex items-center justify-center shrink-0 transition-colors ${
+                    q.correctIds.includes(opt.id)
+                      ? "border-green-500 bg-green-500 text-white"
+                      : "border-gray-300 hover:border-gray-400"
+                  }`}
+                  title="Mark as correct"
+                >
+                  {q.correctIds.includes(opt.id) && (
+                    <span className="text-xs">✓</span>
+                  )}
+                </button>
+                {q.type === "true-false" ? (
+                  <span className="text-sm text-gray-700 flex-1">{opt.text}</span>
+                ) : (
+                  <input
+                    type="text"
+                    value={opt.text}
+                    onChange={(e) => updateOption(qIdx, oIdx, e.target.value)}
+                    placeholder={`Option ${oIdx + 1}`}
+                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  />
+                )}
+                {q.type !== "true-false" && q.options.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => removeOption(qIdx, oIdx)}
+                    className="text-xs text-gray-400 hover:text-red-500"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            {q.type !== "true-false" && (
+              <button
+                type="button"
+                onClick={() => addOption(qIdx)}
+                className="text-xs text-teal-600 hover:text-teal-700"
+              >
+                + Add Option
+              </button>
+            )}
+          </div>
+          <textarea
+            value={q.explanation}
+            onChange={(e) => updateQuestion(qIdx, "explanation", e.target.value)}
+            placeholder="Explanation shown after answering (optional)"
+            rows={2}
+            className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
+          />
+        </div>
+      ))}
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => addQuestion("multiple-choice")}
+          className="text-xs px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 font-medium"
+        >
+          + Multiple Choice
+        </button>
+        <button
+          type="button"
+          onClick={() => addQuestion("true-false")}
+          className="text-xs px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 font-medium"
+        >
+          + True / False
+        </button>
+        <button
+          type="button"
+          onClick={() => addQuestion("multi-select")}
+          className="text-xs px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 font-medium"
+        >
+          + Multi-Select
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function CreateCoursePage() {
@@ -161,6 +468,27 @@ export default function CreateCoursePage() {
                 duration: l.duration || "5 min",
                 content: l.content.trim(),
                 ...(l.url.trim() ? { url: l.url.trim() } : {}),
+                ...(l.type === "quiz" && l.questions.length > 0
+                  ? {
+                      passingScore: l.passingScore,
+                      questions: l.questions
+                        .filter((q) => q.text.trim() && q.correctIds.length > 0)
+                        .map(
+                          (q): QuizQuestion => ({
+                            id: q.id,
+                            text: q.text.trim(),
+                            type: q.type,
+                            options: q.options
+                              .filter((o) => o.text.trim())
+                              .map((o) => ({ id: o.id, text: o.text.trim() })),
+                            correctAnswerIds: q.correctIds,
+                            ...(q.explanation.trim()
+                              ? { explanation: q.explanation.trim() }
+                              : {}),
+                          })
+                        ),
+                    }
+                  : {}),
               })
             ),
         }))
@@ -451,14 +779,22 @@ export default function CreateCoursePage() {
                     )}
 
                     {lesson.type === "quiz" && (
-                      <textarea
-                        value={lesson.content}
-                        onChange={(e) =>
-                          updateLesson(mIdx, lIdx, "content", e.target.value)
-                        }
-                        placeholder="Quiz description and questions..."
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
+                      <QuizBuilder
+                        lesson={lesson}
+                        onChange={(updated) => {
+                          setModules((prev) =>
+                            prev.map((m, mi) =>
+                              mi === mIdx
+                                ? {
+                                    ...m,
+                                    lessons: m.lessons.map((l, li) =>
+                                      li === lIdx ? updated : l
+                                    ),
+                                  }
+                                : m
+                            )
+                          );
+                        }}
                       />
                     )}
                   </div>

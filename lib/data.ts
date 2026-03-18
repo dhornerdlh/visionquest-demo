@@ -1,3 +1,17 @@
+export interface QuizOption {
+  id: string;
+  text: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  text: string;
+  type: "multiple-choice" | "true-false" | "multi-select";
+  options: QuizOption[];
+  correctAnswerIds: string[];
+  explanation?: string;
+}
+
 export interface Lesson {
   id: string;
   title: string;
@@ -5,6 +19,8 @@ export interface Lesson {
   duration: string;
   content: string;
   url?: string;
+  questions?: QuizQuestion[];
+  passingScore?: number;
 }
 
 export interface Module {
@@ -66,6 +82,59 @@ export const courses: Course[] = [
             duration: "5 min",
             content:
               "Test your understanding of hazard identification with this interactive quiz covering the material from the first two lessons.",
+            passingScore: 75,
+            questions: [
+              {
+                id: "ws-q1",
+                text: "Which of the following is an example of a chemical hazard in the workplace?",
+                type: "multiple-choice",
+                options: [
+                  { id: "a", text: "A wet floor near the entrance" },
+                  { id: "b", text: "Improperly stored solvents without an MSDS" },
+                  { id: "c", text: "A frayed electrical cord" },
+                  { id: "d", text: "Repetitive typing motions" },
+                ],
+                correctAnswerIds: ["b"],
+                explanation: "Improperly stored solvents are a chemical hazard. Wet floors are physical hazards, frayed cords are electrical hazards, and repetitive motions are ergonomic hazards.",
+              },
+              {
+                id: "ws-q2",
+                text: "The hierarchy of controls prioritizes eliminating a hazard over providing PPE.",
+                type: "true-false",
+                options: [
+                  { id: "t", text: "True" },
+                  { id: "f", text: "False" },
+                ],
+                correctAnswerIds: ["t"],
+                explanation: "The hierarchy of controls ranks elimination as the most effective control, followed by substitution, engineering controls, administrative controls, and finally PPE as the last resort.",
+              },
+              {
+                id: "ws-q3",
+                text: "Which of these are considered ergonomic hazards? (Select all that apply)",
+                type: "multi-select",
+                options: [
+                  { id: "a", text: "Poor workstation setup" },
+                  { id: "b", text: "Exposed wiring" },
+                  { id: "c", text: "Repetitive lifting without breaks" },
+                  { id: "d", text: "Improper monitor height" },
+                ],
+                correctAnswerIds: ["a", "c", "d"],
+                explanation: "Poor workstation setup, repetitive lifting, and improper monitor height are all ergonomic hazards. Exposed wiring is an electrical/physical hazard.",
+              },
+              {
+                id: "ws-q4",
+                text: "What document contains safety information about chemicals used in the workplace?",
+                type: "multiple-choice",
+                options: [
+                  { id: "a", text: "Employee handbook" },
+                  { id: "b", text: "Safety Data Sheet (SDS/MSDS)" },
+                  { id: "c", text: "Insurance policy" },
+                  { id: "d", text: "Building permit" },
+                ],
+                correctAnswerIds: ["b"],
+                explanation: "Safety Data Sheets (SDS), formerly known as Material Safety Data Sheets (MSDS), contain detailed information about chemical hazards, safe handling, storage, and emergency procedures.",
+              },
+            ],
           },
         ],
       },
@@ -96,6 +165,72 @@ export const courses: Course[] = [
             duration: "5 min",
             content:
               "Complete this final assessment to earn your Workplace Safety Essentials certification. Covers all material from both modules.",
+            passingScore: 80,
+            questions: [
+              {
+                id: "ws-fa1",
+                text: "What is the FIRST thing you should do when discovering a fire in your workplace?",
+                type: "multiple-choice",
+                options: [
+                  { id: "a", text: "Try to extinguish it yourself" },
+                  { id: "b", text: "Activate the fire alarm and alert others" },
+                  { id: "c", text: "Gather your personal belongings" },
+                  { id: "d", text: "Call your supervisor" },
+                ],
+                correctAnswerIds: ["b"],
+                explanation: "Activating the fire alarm is the first priority to ensure everyone is alerted and can begin evacuation. Fighting the fire is only appropriate if it is small and you are trained.",
+              },
+              {
+                id: "ws-fa2",
+                text: "A Class B fire extinguisher is used for which type of fire?",
+                type: "multiple-choice",
+                options: [
+                  { id: "a", text: "Ordinary combustibles (wood, paper)" },
+                  { id: "b", text: "Flammable liquids (gasoline, oil)" },
+                  { id: "c", text: "Electrical equipment" },
+                  { id: "d", text: "Cooking oils and fats" },
+                ],
+                correctAnswerIds: ["b"],
+                explanation: "Class B extinguishers are designed for flammable liquids. Class A is for ordinary combustibles, Class C for electrical, and Class K for cooking oils.",
+              },
+              {
+                id: "ws-fa3",
+                text: "PPE should be your first line of defense against workplace hazards.",
+                type: "true-false",
+                options: [
+                  { id: "t", text: "True" },
+                  { id: "f", text: "False" },
+                ],
+                correctAnswerIds: ["f"],
+                explanation: "PPE is actually the LAST line of defense in the hierarchy of controls. Elimination, substitution, engineering controls, and administrative controls should all be considered first.",
+              },
+              {
+                id: "ws-fa4",
+                text: "Which PPE items should be inspected before EVERY use? (Select all that apply)",
+                type: "multi-select",
+                options: [
+                  { id: "a", text: "Hard hat" },
+                  { id: "b", text: "Fall protection harness" },
+                  { id: "c", text: "Safety glasses" },
+                  { id: "d", text: "All of the above" },
+                ],
+                correctAnswerIds: ["a", "b", "c", "d"],
+                explanation: "All PPE should be inspected before every use to ensure it is in good condition and will provide adequate protection.",
+              },
+              {
+                id: "ws-fa5",
+                text: "Who is responsible for workplace safety?",
+                type: "multiple-choice",
+                options: [
+                  { id: "a", text: "Only the safety officer" },
+                  { id: "b", text: "Only management" },
+                  { id: "c", text: "Everyone in the workplace" },
+                  { id: "d", text: "Only OSHA inspectors" },
+                ],
+                correctAnswerIds: ["c"],
+                explanation: "Workplace safety is a shared responsibility. While employers have a duty of care and OSHA sets standards, every employee plays a role in maintaining a safe work environment.",
+              },
+            ],
           },
         ],
       },

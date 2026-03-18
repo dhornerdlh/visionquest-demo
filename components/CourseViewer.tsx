@@ -5,6 +5,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import type { Course } from "@/lib/data";
 import { getCourseById } from "@/lib/courseStorage";
+import QuizPlayer from "@/components/QuizPlayer";
 
 function getYouTubeId(url: string): string | null {
   const match = url.match(
@@ -260,26 +261,36 @@ export default function CourseViewer({ course: courseProp }: { course?: Course }
                 )}
 
                 {/* Quiz */}
-                {currentLesson.type === "quiz" && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-6">
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-lg font-bold">
-                        ?
-                      </span>
-                      <div>
-                        <h3 className="font-semibold text-amber-800">
-                          Knowledge Check
-                        </h3>
-                        <p className="text-sm text-amber-600">
-                          Interactive quiz · {currentLesson.duration}
-                        </p>
-                      </div>
+                {currentLesson.type === "quiz" &&
+                  (currentLesson.questions?.length ? (
+                    <div className="mb-6">
+                      <QuizPlayer
+                        key={currentLesson.id}
+                        questions={currentLesson.questions}
+                        passingScore={currentLesson.passingScore}
+                        onPass={() => toggleComplete(currentLesson.id)}
+                      />
                     </div>
-                    <p className="text-sm text-amber-700">
-                      {currentLesson.content}
-                    </p>
-                  </div>
-                )}
+                  ) : (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-6">
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-lg font-bold">
+                          ?
+                        </span>
+                        <div>
+                          <h3 className="font-semibold text-amber-800">
+                            Knowledge Check
+                          </h3>
+                          <p className="text-sm text-amber-600">
+                            Interactive quiz · {currentLesson.duration}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-sm text-amber-700">
+                        {currentLesson.content}
+                      </p>
+                    </div>
+                  ))}
 
                 {/* External Link */}
                 {currentLesson.type === "link" && currentLesson.url && (
