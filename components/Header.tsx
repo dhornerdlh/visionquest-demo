@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const basePath = process.env.NODE_ENV === "production" ? "/visionquest-lms" : "";
+const basePath = process.env.NODE_ENV === "production" ? "/visionquest-demo" : "";
 
 export default function Header() {
   const pathname = usePathname();
@@ -13,7 +13,7 @@ export default function Header() {
   ];
 
   return (
-    <header className="bg-[var(--teal-800)] text-white shadow-lg">
+    <header className="bg-teal-800 text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-3">
@@ -46,7 +46,7 @@ export default function Header() {
             })}
           </nav>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[var(--teal-600)] flex items-center justify-center text-sm font-medium">
+            <div className="w-8 h-8 rounded-full bg-teal-600 flex items-center justify-center text-sm font-medium">
               DH
             </div>
           </div>
